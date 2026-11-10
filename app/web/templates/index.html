@@ -8,6 +8,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS (for in-browser Excel & CSV generation on GitHub Pages) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -48,16 +50,19 @@
             <span class="bg-red-500/90 text-white text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
               <span>🇺🇸</span> US Only
             </span>
+            <span id="runtime-mode-badge" class="bg-emerald-500/80 text-white text-[11px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+              <i class="fa-solid fa-circle text-[8px] animate-pulse"></i> Live
+            </span>
           </div>
           <p class="text-xs text-blue-200">Find Businesses with No Website & Clients Actively Looking for One</p>
         </div>
       </div>
 
       <div class="flex items-center space-x-2">
-        <button onclick="downloadFile('/api/export/csv')" class="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5 border border-white/20">
+        <button onclick="handleDownloadCSV()" class="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5 border border-white/20">
           <i class="fa-solid fa-file-csv text-emerald-400"></i> Download CSV
         </button>
-        <button onclick="downloadFile('/api/export/excel')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
+        <button onclick="handleDownloadExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
           <i class="fa-solid fa-file-excel"></i> Download Excel (.xlsx)
         </button>
         <button onclick="triggerGoogleSync()" class="bg-amber-500 hover:bg-amber-400 text-slate-900 text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow" title="Sync leads directly to your Google Sheet">
@@ -140,24 +145,24 @@
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <div>
           <h2 class="text-lg font-bold text-slate-900">Leads Master Sheet</h2>
-          <p class="text-xs text-slate-500">All leads saved to local <code class="bg-slate-100 px-1 py-0.5 rounded text-brand-700">leads.csv</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-brand-700">leads.xlsx</code> and synced to your cloud sheet.</p>
+          <p class="text-xs text-slate-500">All leads saved to <code class="bg-slate-100 px-1 py-0.5 rounded text-brand-700">leads.csv</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-brand-700">leads.xlsx</code>, and cloud Google Sheet.</p>
         </div>
 
         <!-- Filter Controls -->
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <input type="text" id="filter-search" oninput="debounceLoadLeads()" placeholder="Search business, city, phone..." class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs w-full sm:w-48 focus:ring-2 focus:ring-brand-500 focus:outline-none">
           
-          <select id="filter-type" onchange="loadLeads()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none">
+          <select id="filter-type" onchange="renderFilteredLeads()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none">
             <option value="">All Lead Types</option>
             <option value="no_website">No Website</option>
             <option value="seeking_website">Seeking Website</option>
           </select>
 
-          <select id="filter-state" onchange="loadLeads()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none">
+          <select id="filter-state" onchange="renderFilteredLeads()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none">
             <option value="">All US States</option>
           </select>
 
-          <select id="filter-status" onchange="loadLeads()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none">
+          <select id="filter-status" onchange="renderFilteredLeads()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none">
             <option value="">All Statuses</option>
             <option value="New">New</option>
             <option value="Contacted">Contacted</option>
@@ -205,7 +210,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Select US State *</label>
-            <select id="nw-state" onchange="onStateSelectChange()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            <select id="nw-state" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
               <!-- States injected dynamically -->
             </select>
           </div>
@@ -356,21 +361,6 @@
             <p class="text-[11px] text-slate-500 mt-1">Whenever a lead is found or status changed, it appends automatically into this Google Sheet.</p>
           </div>
 
-          <div class="border-t border-slate-200 pt-4">
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Google Places API Key (Optional)</label>
-            <input type="password" id="setting-google-key" placeholder="AIzaSy..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
-            <p class="text-[11px] text-slate-500 mt-1">Optional. Adds live unlimited Google Maps Places searching across any US zip code.</p>
-          </div>
-
-          <div class="border-t border-slate-200 pt-4">
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Reddit API Client ID & Secret (Optional)</label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input type="text" id="setting-reddit-id" placeholder="Client ID" class="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
-              <input type="password" id="setting-reddit-secret" placeholder="Client Secret" class="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
-            </div>
-            <p class="text-[11px] text-slate-500 mt-1">Optional. Enables live authenticated searches on r/smallbusiness and r/forhire.</p>
-          </div>
-
           <div class="pt-4 flex justify-end">
             <button onclick="saveAllSettings()" class="bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow transition">
               Save Settings
@@ -462,90 +452,188 @@
     <span id="toast-message">Notification</span>
   </div>
 
-  <!-- JAVASCRIPT LOGIC -->
+  <!-- EMBEDDED SEED DATA & SCRIPT LOGIC -->
   <script>
-    let metaData = {};
-    let currentLeads = [];
+    // Universal state
+    let metaData = {
+      states: {
+        "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California",
+        "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "FL": "Florida", "GA": "Georgia",
+        "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa",
+        "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+        "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri",
+        "MT": "Montana", "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey",
+        "NM": "New Mexico", "NY": "New York", "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio",
+        "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+        "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont",
+        "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
+        "DC": "District of Columbia"
+      },
+      popular_categories: [
+        "Plumbing", "Roofing", "Landscaping & Lawn Care", "Electrician",
+        "HVAC & Air Conditioning", "Auto Repair & Mechanics", "Bakery & Pastry Shop",
+        "Barbershop & Hair Salon", "House Cleaning & Maid Service",
+        "General Contractor / Home Remodeling", "Painter & Drywall",
+        "Dentist & Orthodontics", "Pest Control", "Restaurant & Cafe",
+        "Handyman Services", "Towing Service", "Photography",
+        "Accounting & Bookkeeping", "Pet Grooming & Boarding", "Personal Fitness Trainer / Gym"
+      ],
+      google_apps_script_template: `function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = JSON.parse(e.postData.contents);
+    var leads = data.leads;
+    var columns = data.columns;
+    
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(columns);
+      sheet.getRange(1, 1, 1, columns.length).setFontWeight("bold").setBackground("#1E3A8A").setFontColor("#FFFFFF");
+      sheet.setFrozenRows(1);
+    }
+    
+    for (var i = 0; i < leads.length; i++) {
+      var lead = leads[i];
+      var row = [];
+      for (var j = 0; j < columns.length; j++) {
+        row.push(lead[columns[j]] || "");
+      }
+      sheet.appendRow(row);
+    }
+    return ContentService.createTextOutput(JSON.stringify({status: "success", count: leads.length}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({status: "error", message: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`
+    };
+
+    let allLeads = [];
+    let isLocalBackend = false;
     let searchTimeout = null;
 
     document.addEventListener("DOMContentLoaded", async () => {
-      await fetchMetadata();
-      await fetchStats();
-      await loadLeads();
-      await loadSettingsForm();
+      populateDropdowns();
+      await initData();
     });
 
-    async function fetchMetadata() {
+    function populateDropdowns() {
+      const nwState = document.getElementById("nw-state");
+      const filterState = document.getElementById("filter-state");
+      
+      nwState.innerHTML = '<option value="">Select a US State</option>';
+      for (const [code, name] of Object.entries(metaData.states)) {
+        const opt = `<option value="${code}">${name} (${code})</option>`;
+        nwState.innerHTML += opt;
+        filterState.innerHTML += opt;
+      }
+      nwState.value = "TX";
+
+      const nwCat = document.getElementById("nw-category");
+      nwCat.innerHTML = '<option value="">All Trades & Services</option>';
+      metaData.popular_categories.forEach(c => {
+        nwCat.innerHTML += `<option value="${c}">${c}</option>`;
+      });
+
+      document.getElementById("apps-script-code").innerText = metaData.google_apps_script_template.trim();
+      const savedWebhook = localStorage.getItem("leadfinder_webhook_url") || "";
+      document.getElementById("setting-webhook-url").value = savedWebhook;
+    }
+
+    async function initData() {
+      // 1. Check if local FastAPI backend is active
       try {
-        const res = await fetch("/api/meta");
-        metaData = await res.json();
-        
-        // Populate States Dropdowns
-        const nwState = document.getElementById("nw-state");
-        const filterState = document.getElementById("filter-state");
-        
-        nwState.innerHTML = '<option value="">Select a US State</option>';
-        for (const [code, name] of Object.entries(metaData.states)) {
-          const opt = `<option value="${code}">${name} (${code})</option>`;
-          nwState.innerHTML += opt;
-          filterState.innerHTML += opt;
+        const metaRes = await fetch("/api/meta", { signal: AbortSignal.timeout(1500) });
+        if (metaRes.ok) {
+          isLocalBackend = true;
+          document.getElementById("runtime-mode-badge").innerHTML = `<i class="fa-solid fa-server text-[9px]"></i> Local Server`;
+          document.getElementById("runtime-mode-badge").className = "bg-blue-600 text-white text-[11px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1";
+          await loadLeadsFromBackend();
+          return;
         }
-
-        // Set default to Texas
-        nwState.value = "TX";
-
-        // Populate Categories Dropdown
-        const nwCat = document.getElementById("nw-category");
-        nwCat.innerHTML = '<option value="">All Trades & Services</option>';
-        metaData.popular_categories.forEach(c => {
-          nwCat.innerHTML += `<option value="${c}">${c}</option>`;
-        });
-
-        // Set Google Apps Script template
-        document.getElementById("apps-script-code").innerText = metaData.google_apps_script_template.trim();
-      } catch (err) {
-        console.error("Meta error:", err);
+      } catch (e) {
+        // Not on local backend -> Running on GitHub Pages!
       }
-    }
 
-    async function fetchStats() {
+      // GitHub Pages Static Mode
+      isLocalBackend = false;
+      document.getElementById("runtime-mode-badge").innerHTML = `<i class="fa-brands fa-github text-[11px]"></i> GitHub Pages`;
+      document.getElementById("runtime-mode-badge").className = "bg-emerald-600 text-white text-[11px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1";
+
+      // Load from leads.json if available, or localStorage, or embedded seed
       try {
-        const res = await fetch("/api/stats");
-        const data = await res.json();
-        document.getElementById("stat-total").innerText = data.total_leads;
-        document.getElementById("stat-no-web").innerText = data.no_website_leads;
-        document.getElementById("stat-seeking").innerText = data.seeking_website_leads;
-        document.getElementById("sheet-count").innerText = data.total_leads;
+        const jsonRes = await fetch("leads.json");
+        if (jsonRes.ok) {
+          allLeads = await jsonRes.json();
+        }
       } catch (err) {
-        console.error("Stats error:", err);
+        console.warn("Could not load leads.json:", err);
+      }
+
+      // Merge saved status edits from localStorage
+      const localEdits = JSON.parse(localStorage.getItem("leadfinder_status_overrides") || "{}");
+      allLeads.forEach(l => {
+        if (localEdits[l.id]) {
+          l.status = localEdits[l.id];
+        }
+      });
+
+      updateStatsUI();
+      renderFilteredLeads();
+    }
+
+    async function loadLeadsFromBackend() {
+      try {
+        const statsRes = await fetch("/api/stats");
+        const statsData = await statsRes.json();
+        document.getElementById("stat-total").innerText = statsData.total_leads;
+        document.getElementById("stat-no-web").innerText = statsData.no_website_leads;
+        document.getElementById("stat-seeking").innerText = statsData.seeking_website_leads;
+        document.getElementById("sheet-count").innerText = statsData.total_leads;
+
+        const res = await fetch("/api/leads?limit=500");
+        const data = await res.json();
+        allLeads = data.leads;
+        renderLeadsTable(allLeads);
+      } catch (err) {
+        console.error("Backend fetch error:", err);
       }
     }
 
-    async function loadLeads() {
+    function updateStatsUI() {
+      const total = allLeads.length;
+      const noWeb = allLeads.filter(l => l.lead_type === 'no_website').length;
+      const seeking = allLeads.filter(l => l.lead_type === 'seeking_website').length;
+
+      document.getElementById("stat-total").innerText = total;
+      document.getElementById("stat-no-web").innerText = noWeb;
+      document.getElementById("stat-seeking").innerText = seeking;
+      document.getElementById("sheet-count").innerText = total;
+    }
+
+    function renderFilteredLeads() {
       const type = document.getElementById("filter-type").value;
       const state = document.getElementById("filter-state").value;
       const status = document.getElementById("filter-status").value;
-      const search = document.getElementById("filter-search").value;
+      const search = (document.getElementById("filter-search").value || "").toLowerCase().trim();
 
-      let url = `/api/leads?limit=500`;
-      if (type) url += `&lead_type=${encodeURIComponent(type)}`;
-      if (state) url += `&state=${encodeURIComponent(state)}`;
-      if (status) url += `&status=${encodeURIComponent(status)}`;
-      if (search) url += `&search=${encodeURIComponent(search)}`;
+      let filtered = allLeads.filter(l => {
+        if (type && l.lead_type !== type) return false;
+        if (state && l.state.toUpperCase() !== state.toUpperCase()) return false;
+        if (status && l.status !== status) return false;
+        if (search) {
+          const matchStr = `${l.business_name} ${l.city} ${l.state} ${l.phone} ${l.contact_name} ${l.category}`.toLowerCase();
+          if (!matchStr.includes(search)) return false;
+        }
+        return true;
+      });
 
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        currentLeads = data.leads;
-        renderLeadsTable(currentLeads);
-      } catch (err) {
-        console.error("Error loading leads:", err);
-      }
+      renderLeadsTable(filtered);
     }
 
     function debounceLoadLeads() {
       clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(loadLeads, 300);
+      searchTimeout = setTimeout(renderFilteredLeads, 250);
     }
 
     function renderLeadsTable(leads) {
@@ -571,7 +659,7 @@
 
         const sourceLink = l.source_url && l.source_url.startsWith('http')
           ? `<a href="${l.source_url}" target="_blank" class="text-brand-600 hover:underline flex items-center gap-1">${l.source} <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>`
-          : l.source;
+          : (l.source || 'US Directory');
 
         return `
           <tr class="hover:bg-slate-50 transition">
@@ -632,21 +720,30 @@
       btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Searching US Registries...`;
 
       try {
-        const res = await fetch("/api/leads/search-no-website", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ state, city, category, limit: 15 })
-        });
-        const data = await res.json();
-        showToast(`Discovered ${data.found_leads} businesses with NO website!`);
-        
-        // Show results grid
-        renderSearchResultsGrid("no-web-results-grid", data.leads);
-        document.getElementById("no-web-results-count").innerText = `${data.found_leads} Found`;
-        document.getElementById("no-web-results-container").classList.remove("hidden");
+        if (isLocalBackend) {
+          const res = await fetch("/api/leads/search-no-website", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ state, city, category, limit: 15 })
+          });
+          const data = await res.json();
+          showToast(`Discovered ${data.found_leads} businesses with NO website!`);
+          renderSearchResultsGrid("no-web-results-grid", data.leads);
+          document.getElementById("no-web-results-count").innerText = `${data.found_leads} Found`;
+          document.getElementById("no-web-results-container").classList.remove("hidden");
+          await loadLeadsFromBackend();
+        } else {
+          // GitHub Pages Standalone Search
+          let results = allLeads.filter(l => l.lead_type === 'no_website');
+          if (state) results = results.filter(l => l.state.toUpperCase() === state.toUpperCase());
+          if (city) results = results.filter(l => l.city.toLowerCase().includes(city.toLowerCase()));
+          if (category) results = results.filter(l => l.category.toLowerCase().includes(category.toLowerCase()));
 
-        await fetchStats();
-        await loadLeads();
+          showToast(`Discovered ${results.length} businesses matching filters!`);
+          renderSearchResultsGrid("no-web-results-grid", results);
+          document.getElementById("no-web-results-count").innerText = `${results.length} Found`;
+          document.getElementById("no-web-results-container").classList.remove("hidden");
+        }
       } catch (err) {
         showToast("Error searching businesses", true);
       } finally {
@@ -664,20 +761,55 @@
       btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Scanning Live US Feeds...`;
 
       try {
-        const res = await fetch("/api/leads/search-seeking-website", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ keywords, limit })
-        });
-        const data = await res.json();
-        showToast(`Found ${data.found_leads} in-market website requests!`);
-        
-        renderSearchResultsGrid("seeking-results-grid", data.leads);
-        document.getElementById("seeking-results-count").innerText = `${data.found_leads} Found`;
-        document.getElementById("seeking-results-container").classList.remove("hidden");
+        if (isLocalBackend) {
+          const res = await fetch("/api/leads/search-seeking-website", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ keywords, limit })
+          });
+          const data = await res.json();
+          showToast(`Found ${data.found_leads} in-market website requests!`);
+          renderSearchResultsGrid("seeking-results-grid", data.leads);
+          document.getElementById("seeking-results-count").innerText = `${data.found_leads} Found`;
+          document.getElementById("seeking-results-container").classList.remove("hidden");
+          await loadLeadsFromBackend();
+        } else {
+          // GitHub Pages Standalone Search: Live HN Algolia API + In-memory search
+          let liveHits = [];
+          try {
+            const hnRes = await fetch(`https://hn.algolia.com/api/v1/search_by_date?query=${encodeURIComponent(keywords || "need a website")}&tags=comment,story&hitsPerPage=10`);
+            if (hnRes.ok) {
+              const hnData = await hnRes.json();
+              hnData.hits.forEach(h => {
+                const text = (h.comment_text || h.title || "").replace(/<[^>]+>/g, '').trim();
+                liveHits.push({
+                  id: "hn_" + (h.objectID || Math.random().toString().slice(2, 8)),
+                  lead_type: "seeking_website",
+                  business_name: `HN Founder: @${h.author}`,
+                  contact_name: `@${h.author}`,
+                  phone: "N/A",
+                  email: "N/A",
+                  city: "United States",
+                  state: "US",
+                  category: "Web Design Project",
+                  source: "Hacker News Live",
+                  source_url: `https://news.ycombinator.com/item?id=${h.story_id || h.objectID}`,
+                  notes: text.slice(0, 150) + "...",
+                  website_status: "Seeking Website",
+                  status: "New"
+                });
+              });
+            }
+          } catch(e) {}
 
-        await fetchStats();
-        await loadLeads();
+          let existingMatches = allLeads.filter(l => l.lead_type === 'seeking_website');
+          let combined = [...liveHits, ...existingMatches].slice(0, limit);
+
+          showToast(`Found ${combined.length} in-market website requests!`);
+          renderSearchResultsGrid("seeking-results-grid", combined);
+          document.getElementById("seeking-results-count").innerText = `${combined.length} Found`;
+          document.getElementById("seeking-results-container").classList.remove("hidden");
+        }
       } catch (err) {
         showToast("Error searching in-market leads", true);
       } finally {
@@ -722,52 +854,78 @@
     }
 
     async function updateLeadStatus(leadId, newStatus) {
-      try {
-        await fetch(`/api/leads/${leadId}/status`, {
-          method: "PUT",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ status: newStatus })
-        });
-        showToast(`Lead status updated to ${newStatus}`);
-        await fetchStats();
-      } catch (err) {
-        showToast("Error updating status", true);
+      if (isLocalBackend) {
+        try {
+          await fetch(`/api/leads/${leadId}/status`, {
+            method: "PUT",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ status: newStatus })
+          });
+        } catch (e) {}
       }
+
+      // Update in-memory & localStorage
+      const lead = allLeads.find(l => l.id === leadId);
+      if (lead) lead.status = newStatus;
+      const localEdits = JSON.parse(localStorage.getItem("leadfinder_status_overrides") || "{}");
+      localEdits[leadId] = newStatus;
+      localStorage.setItem("leadfinder_status_overrides", JSON.stringify(localEdits));
+
+      showToast(`Lead status updated to ${newStatus}`);
+      updateStatsUI();
+      renderFilteredLeads();
     }
 
     async function deleteLead(leadId) {
       if (!confirm("Are you sure you want to remove this lead?")) return;
-      try {
-        await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
-        showToast("Lead removed");
-        await fetchStats();
-        await loadLeads();
-      } catch (err) {
-        showToast("Error deleting lead", true);
+      if (isLocalBackend) {
+        try { await fetch(`/api/leads/${leadId}`, { method: "DELETE" }); } catch(e) {}
       }
+      allLeads = allLeads.filter(l => l.id !== leadId);
+      showToast("Lead removed");
+      updateStatsUI();
+      renderFilteredLeads();
     }
 
-    async function openPitchModal(leadId) {
-      try {
-        const res = await fetch(`/api/leads/${leadId}/outreach`);
-        const data = await res.json();
-        const lead = data.lead;
-        const pitch = data.pitch;
+    function openPitchModal(leadId) {
+      const lead = allLeads.find(l => l.id === leadId) || {
+        business_name: "Prospective Client",
+        contact_name: "Owner",
+        lead_type: "no_website",
+        city: "your area",
+        category: "services"
+      };
 
-        document.getElementById("modal-biz-name").innerText = lead.business_name;
-        document.getElementById("modal-lead-type-badge").innerText = lead.lead_type === 'no_website' ? 'No Website' : 'Seeking Website';
-        document.getElementById("modal-lead-type-badge").className = `text-[10px] uppercase font-black px-2 py-0.5 rounded ${lead.lead_type === 'no_website' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`;
+      const biz = lead.business_name;
+      const contact = lead.contact_name || "Owner";
+      const city = lead.city && lead.city !== "United States" ? lead.city : "your area";
+      const cat = lead.category || "services";
 
-        document.getElementById("modal-email-subject").value = pitch.email_subject;
-        document.getElementById("modal-email-body").value = pitch.email_body;
-        document.getElementById("modal-sms-body").value = pitch.sms_body;
-        document.getElementById("modal-phone-script").value = pitch.phone_script;
+      let subject, body, sms, phone;
 
-        switchPitchSubTab('subtab-email');
-        document.getElementById("pitch-modal").classList.remove("hidden");
-      } catch (err) {
-        showToast("Error generating pitch", true);
+      if (lead.lead_type === 'no_website') {
+        subject = `Quick question regarding ${biz}'s website in ${city}`;
+        body = `Hi ${contact},\n\nI was looking up top-rated ${cat.toLowerCase()} providers in ${city} and came across ${biz}. Your reputation speaks for itself!\n\nHowever, I noticed you don't currently have an active, mobile-friendly website where local customers can view your services, check pricing, and book directly online.\n\nMost local customers in ${city} search on Google first, and businesses without a modern site end up losing 40-50% of calls to nearby competitors who have a simple site set up.\n\nI build fast, professional websites specifically for local businesses like yours (takes less than 3 days, no upfront tech headache).\n\nWould you be open to seeing a quick, 2-minute free mockup of what a clean website for ${biz} could look like?\n\nBest regards,\n[Your Name]\n[Your Phone]\n[Your Portfolio Link]`;
+        sms = `Hi ${contact}, this is [Your Name]. Saw ${biz} in ${city}—you do great work! Noticed you don't have a modern website yet. We build simple 1-page sites for local pros that double incoming customer calls. Would you like to see a free mockup for ${biz}?`;
+        phone = `Caller: "Hi, is this ${contact} with ${biz}?"\nLead: "Yes, speaking."\nCaller: "Hey ${contact}! My name is [Your Name]. I came across your business while looking up ${cat.toLowerCase()} in ${city}. I noticed you have great local presence, but don't currently have an official website where people can book or request quotes online. I design high-converting, affordable sites for local trades here in the US. I put together a quick draft concept for ${biz}—can I shoot over a quick screenshot to your email or text to see what you think?"`;
+      } else {
+        subject = `Website Development for ${biz} - Available to assist`;
+        body = `Hi ${contact},\n\nI saw your recent post regarding your website project for ${biz}.\n\nI specialize in building clean, fast, high-converting websites and landing pages for US businesses and entrepreneurs.\n\nHere is what I can deliver for your project:\n• Fully responsive, modern design (looks great on iPhone & desktop)\n• Fast loading speed, SEO-optimized for Google search\n• Contact forms, quote estimators, and online appointment booking\n• Turnaround within 3-7 days with 100% satisfaction guarantee\n\nYou can check out some of my recent work here: [Your Portfolio Link]\n\nAre you free for a quick 10-minute call or chat today to go over your vision and budget?\n\nBest regards,\n[Your Name]\n[Your Phone / WhatsApp]`;
+        sms = `Hi ${contact}! Saw your request for a website build for ${biz}. I'm an independent US web designer and would love to help you bring this to life quickly and affordably. When are you free for a quick chat?`;
+        phone = `Caller: "Hi ${contact}, my name is [Your Name]. I saw your posting regarding your website project for ${biz}."\nLead: "Oh yes, what's up?"\nCaller: "I specialize in building custom, responsive websites with online booking and quote forms for businesses just like yours. I reviewed your requirements and know exactly how to execute this within your timeline. Do you have 5 minutes to walk through your key goals?"`;
       }
+
+      document.getElementById("modal-biz-name").innerText = biz;
+      document.getElementById("modal-lead-type-badge").innerText = lead.lead_type === 'no_website' ? 'No Website' : 'Seeking Website';
+      document.getElementById("modal-lead-type-badge").className = `text-[10px] uppercase font-black px-2 py-0.5 rounded ${lead.lead_type === 'no_website' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`;
+
+      document.getElementById("modal-email-subject").value = subject;
+      document.getElementById("modal-email-body").value = body;
+      document.getElementById("modal-sms-body").value = sms;
+      document.getElementById("modal-phone-script").value = phone;
+
+      switchPitchSubTab('subtab-email');
+      document.getElementById("pitch-modal").classList.remove("hidden");
     }
 
     function closePitchModal() {
@@ -796,57 +954,146 @@
       showToast("Google Apps Script copied!");
     }
 
-    async function loadSettingsForm() {
-      try {
-        const res = await fetch("/api/settings");
-        const s = await res.json();
-        document.getElementById("setting-webhook-url").value = s.google_sheets_webhook_url || "";
-        document.getElementById("setting-google-key").value = s.google_places_api_key || "";
-        document.getElementById("setting-reddit-id").value = s.reddit_client_id || "";
-        document.getElementById("setting-reddit-secret").value = s.reddit_client_secret || "";
-      } catch (err) {
-        console.error("Settings load error:", err);
-      }
-    }
-
-    async function saveAllSettings() {
-      const newSettings = {
-        google_sheets_webhook_url: document.getElementById("setting-webhook-url").value.trim(),
-        google_places_api_key: document.getElementById("setting-google-key").value.trim(),
-        reddit_client_id: document.getElementById("setting-reddit-id").value.trim(),
-        reddit_client_secret: document.getElementById("setting-reddit-secret").value.trim()
-      };
-
-      try {
-        await fetch("/api/settings", {
+    function saveAllSettings() {
+      const webhook = document.getElementById("setting-webhook-url").value.trim();
+      localStorage.setItem("leadfinder_webhook_url", webhook);
+      if (isLocalBackend) {
+        fetch("/api/settings", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(newSettings)
-        });
-        showToast("Settings saved successfully!");
-      } catch (err) {
-        showToast("Error saving settings", true);
+          body: JSON.stringify({ google_sheets_webhook_url: webhook })
+        }).catch(()=>{});
       }
+      showToast("Settings saved successfully!");
     }
 
     async function triggerGoogleSync() {
-      showToast("Syncing leads with Google Sheet...");
+      const webhookUrl = document.getElementById("setting-webhook-url").value.trim() || localStorage.getItem("leadfinder_webhook_url");
+      if (!webhookUrl) {
+        showToast("Please enter your Google Sheets Webhook URL in Settings first.", true);
+        switchTab('tab-settings');
+        return;
+      }
+
+      showToast("Syncing leads to Google Sheet...");
+
+      const columns = [
+        "Lead ID", "Type", "Business / Project", "Contact Person", "Phone Number",
+        "Email Address", "City", "State", "Country", "Full Address", "Industry / Category",
+        "Website Status", "Lead Source", "Source URL", "Notes / Request Details", "Outreach Status", "Date Found"
+      ];
+
+      const sheetRows = allLeads.map(l => ({
+        "Lead ID": l.id,
+        "Type": l.lead_type === 'no_website' ? 'No Website' : 'Looking for Website',
+        "Business / Project": l.business_name,
+        "Contact Person": l.contact_name || 'N/A',
+        "Phone Number": l.phone || 'N/A',
+        "Email Address": l.email || 'N/A',
+        "City": l.city,
+        "State": l.state,
+        "Country": l.country || 'United States',
+        "Full Address": l.address || `${l.city}, ${l.state}`,
+        "Industry / Category": l.category,
+        "Website Status": l.website_status,
+        "Lead Source": l.source,
+        "Source URL": l.source_url || 'N/A',
+        "Notes / Request Details": l.notes || '',
+        "Outreach Status": l.status,
+        "Date Found": l.created_at
+      }));
+
       try {
-        const res = await fetch("/api/sync/google-sheet", { method: "POST" });
-        const data = await res.json();
-        if (data.success) {
-          showToast("Successfully synced to Google Sheet!");
-        } else {
-          showToast(data.message || "Please configure your Google Sheets Webhook in settings.", true);
-        }
+        await fetch(webhookUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ columns, leads: sheetRows })
+        });
+        showToast("Successfully pushed leads to Google Sheet!");
       } catch (err) {
-        showToast("Sync error. Check webhook URL in settings.", true);
+        showToast("Error syncing to Google Sheet. Check webhook URL.", true);
       }
     }
 
-    function downloadFile(url) {
-      window.location.href = url;
-      showToast("Starting download...");
+    function handleDownloadCSV() {
+      if (isLocalBackend) {
+        window.location.href = '/api/export/csv';
+        showToast("Downloading CSV...");
+        return;
+      }
+
+      // Client-Side CSV Generation for GitHub Pages
+      const headers = ["Lead ID","Type","Business / Project","Contact Person","Phone Number","Email Address","City","State","Country","Full Address","Industry / Category","Website Status","Lead Source","Source URL","Notes / Request Details","Outreach Status","Date Found"];
+      const rows = allLeads.map(l => [
+        l.id,
+        l.lead_type === 'no_website' ? 'No Website' : 'Looking for Website',
+        `"${(l.business_name || '').replace(/"/g, '""')}"`,
+        `"${(l.contact_name || '').replace(/"/g, '""')}"`,
+        `"${(l.phone || '').replace(/"/g, '""')}"`,
+        `"${(l.email || '').replace(/"/g, '""')}"`,
+        `"${(l.city || '').replace(/"/g, '""')}"`,
+        `"${(l.state || '').replace(/"/g, '""')}"`,
+        `"${(l.country || 'United States').replace(/"/g, '""')}"`,
+        `"${(l.address || '').replace(/"/g, '""')}"`,
+        `"${(l.category || '').replace(/"/g, '""')}"`,
+        `"${(l.website_status || '').replace(/"/g, '""')}"`,
+        `"${(l.source || '').replace(/"/g, '""')}"`,
+        `"${(l.source_url || '').replace(/"/g, '""')}"`,
+        `"${(l.notes || '').replace(/"/g, '""')}"`,
+        l.status,
+        l.created_at
+      ]);
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "us_leads.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Downloaded us_leads.csv!");
+    }
+
+    function handleDownloadExcel() {
+      if (isLocalBackend) {
+        window.location.href = '/api/export/excel';
+        showToast("Downloading Excel...");
+        return;
+      }
+
+      // Client-side Excel Generation with SheetJS on GitHub Pages
+      if (typeof XLSX === 'undefined') {
+        handleDownloadCSV();
+        return;
+      }
+
+      const rows = allLeads.map(l => ({
+        "Lead ID": l.id,
+        "Type": l.lead_type === 'no_website' ? 'No Website' : 'Looking for Website',
+        "Business / Project": l.business_name,
+        "Contact Person": l.contact_name || 'N/A',
+        "Phone Number": l.phone || 'N/A',
+        "Email Address": l.email || 'N/A',
+        "City": l.city,
+        "State": l.state,
+        "Country": l.country || 'United States',
+        "Full Address": l.address || `${l.city}, ${l.state}`,
+        "Industry / Category": l.category,
+        "Website Status": l.website_status,
+        "Lead Source": l.source,
+        "Source URL": l.source_url || 'N/A',
+        "Notes / Request Details": l.notes || '',
+        "Outreach Status": l.status,
+        "Date Found": l.created_at
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "US Leads");
+      XLSX.writeFile(wb, "us_leads.xlsx");
+      showToast("Downloaded us_leads.xlsx!");
     }
 
     function switchTab(tabId) {
@@ -866,10 +1113,6 @@
 
     function setKeywords(kw) {
       document.getElementById("sk-keywords").value = kw;
-    }
-
-    function onStateSelectChange() {
-      // Optional state change hook
     }
 
     function showToast(msg, isError = false) {
@@ -894,4 +1137,3 @@
   </script>
 </body>
 </html>
-

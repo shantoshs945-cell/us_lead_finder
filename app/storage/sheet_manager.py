@@ -148,12 +148,20 @@ def export_to_excel(leads: Optional[List[Lead]] = None, filepath: Path = EXCEL_P
     return str(filepath)
 
 def sync_sheets(leads: Optional[List[Lead]] = None) -> Dict[str, Any]:
-    """Generates and updates both CSV and Excel sheets."""
+    """Generates and updates CSV, Excel, and JSON sheets."""
     if leads is None:
         leads = get_leads(limit=10000)
 
     csv_path = export_to_csv(leads)
     excel_path = export_to_excel(leads)
+
+    # Also sync leads.json for GitHub Pages static hosting
+    json_path = Path(csv_path).parent / "leads.json"
+    try:
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump([l.model_dump() for l in leads], f, indent=2)
+    except Exception:
+        pass
 
     settings = load_settings()
     webhook_url = settings.get("google_sheets_webhook_url")

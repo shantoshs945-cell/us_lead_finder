@@ -199,6 +199,11 @@ def update_settings(new_settings: Dict[str, Any]):
 
 @app.get("/", response_class=HTMLResponse)
 def serve_index():
+    # Check root index.html first (for GitHub Pages / unified structure)
+    root_index = Path(__file__).resolve().parent.parent.parent / "index.html"
+    if root_index.exists():
+        with open(root_index, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
     template_path = Path(__file__).parent / "templates" / "index.html"
     if template_path.exists():
         with open(template_path, "r", encoding="utf-8") as f:
