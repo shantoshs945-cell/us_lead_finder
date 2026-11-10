@@ -85,16 +85,26 @@ DEFAULT_SETTINGS = {
 }
 
 def load_settings() -> Dict[str, Any]:
+    res = DEFAULT_SETTINGS.copy()
     if SETTINGS_PATH.exists():
         try:
             with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
                 saved = json.load(f)
-                res = DEFAULT_SETTINGS.copy()
                 res.update(saved)
-                return res
         except Exception:
-            return DEFAULT_SETTINGS.copy()
-    return DEFAULT_SETTINGS.copy()
+            pass
+
+    # Read environment variables (Render / Cloud environment support)
+    if os.environ.get("GOOGLE_SHEETS_WEBHOOK_URL"):
+        res["google_sheets_webhook_url"] = os.environ["GOOGLE_SHEETS_WEBHOOK_URL"]
+    if os.environ.get("GOOGLE_PLACES_API_KEY"):
+        res["google_places_api_key"] = os.environ["GOOGLE_PLACES_API_KEY"]
+    if os.environ.get("REDDIT_CLIENT_ID"):
+        res["reddit_client_id"] = os.environ["REDDIT_CLIENT_ID"]
+    if os.environ.get("REDDIT_CLIENT_SECRET"):
+        res["reddit_client_secret"] = os.environ["REDDIT_CLIENT_SECRET"]
+
+    return res
 
 def save_settings(new_settings: Dict[str, Any]) -> None:
     current = load_settings()
