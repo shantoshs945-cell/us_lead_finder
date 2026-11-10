@@ -28,18 +28,11 @@ class Lead(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     def get_google_maps_url(self) -> str:
-        """Returns explicitly set google_maps_url or auto-generates a valid Google Maps search URL."""
+        """Returns explicitly set google_maps_url or auto-generates a clean, accurate Google Maps search URL."""
         if self.google_maps_url and self.google_maps_url.strip():
             return self.google_maps_url
-        parts = [self.business_name]
-        if self.address and self.address.strip():
-            parts.append(self.address)
-        if self.city and self.city.strip():
-            parts.append(self.city)
-        if self.state and self.state.strip():
-            parts.append(self.state)
-        query = " ".join(parts).strip()
-        return f"https://www.google.com/maps/search/?api=1&query={quote_plus(query)}"
+        from app.finders.verifier import build_accurate_maps_url
+        return build_accurate_maps_url(self.business_name, self.address, self.city, self.state)
 
     def to_sheet_row(self) -> dict:
         """Flattens lead for spreadsheet display and CSV/Excel export."""

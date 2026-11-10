@@ -1,12 +1,13 @@
 import requests
 import json
 import logging
+import re
 from typing import List, Optional, Dict, Any
 from urllib.parse import quote_plus
 
 from app.models import Lead
 from app.config import load_settings, US_STATES
-from app.finders.verifier import normalize_us_phone, normalize_us_state
+from app.finders.verifier import normalize_us_phone, normalize_us_state, build_accurate_maps_url
 from app.data.us_seeds import VERIFIED_US_NO_WEBSITE_BUSINESSES
 
 logger = logging.getLogger(__name__)
@@ -116,16 +117,39 @@ class NoWebsiteFinder:
                     if not b_name:
                         continue
 
+                    # Skip personal names formatted as "LASTNAME, FIRSTNAME" unless corporate entity
+                    if "," in b_name and not any(kw in b_name.lower() for kw in ["llc", "inc", "corp", "co."]):
+                        continue
+
                     raw_phone = item.get(endpoint["phone_field"], "") if endpoint["phone_field"] else ""
                     phone = normalize_us_phone(raw_phone)
+                    if phone == "N/A" or len(re.sub(r"\D", "", phone)) < 10:
+                        continue
+
                     bldg = item.get(endpoint.get("bldg_field", ""), "")
                     street = item.get(endpoint["street_field"], "")
+                    
+                    # Reject street corner / intersection vendors
+                    if any(c in street.upper() for c in ["NWC", "NEC", "SWC", "SEC", "CORNER", "INTERSECTION"]):
+                        continue
+
                     item_city = item.get(endpoint["city_field"], city or "New York")
-                    zip_code = item.get(endpoint["zip_field"], "")
-                    cat = item.get(endpoint["cat_field"], category or "Commercial Business")
+                    zip_code = str(item.get(endpoint["zip_field"], "")).strip()
+
+                    # Validate zip code belongs to state to filter out out-of-state holding entities
+                    if state == "IL" and zip_code and not zip_code.startswith(("60", "61", "62")):
+                        continue
+                    if state == "NY" and zip_code and not zip_code.startswith(("10", "11", "12", "13", "14")):
+                        continue
+                    if state == "CA" and zip_code and not zip_code.startswith("9"):
+                        continue
 
                     full_addr = f"{bldg} {street}".strip()
-                    if zip_code:
+                    # Ensure physical street building number exists for accurate navigation
+                    if not re.search(r"\d", full_addr):
+                        continue
+
+                    if zip_code and zip_code not in full_addr:
                         full_addr += f", {zip_code}"
 
                     # Explicitly check website is absent
@@ -133,7 +157,9 @@ class NoWebsiteFinder:
                     if website and website.strip() not in ("", "None", "null"):
                         continue
 
-                    maps_query = quote_plus(f"{b_name} {full_addr} {item_city} {state}")
+                    cat = item.get(endpoint["cat_field"], category or "Commercial Business")
+                    accurate_maps_url = build_accurate_maps_url(b_name.title(), full_addr, item_city.title(), state)
+
                     leads.append(
                         Lead(
                             lead_type="no_website",
@@ -148,7 +174,7 @@ class NoWebsiteFinder:
                             category=cat[:60] if cat else (category or "General Contractor"),
                             source=endpoint["name"],
                             source_url=endpoint["url"],
-                            google_maps_url=f"https://www.google.com/maps/search/?api=1&query={maps_query}",
+                            google_maps_url=accurate_maps_url,
                             notes="Verified active business license in city registry with no website on record.",
                             website_status="Confirmed No Website"
                         )
@@ -272,7 +298,6 @@ class NoWebsiteFinder:
                         street = tags.get("addr:street", "")
                         housenumber = tags.get("addr:housenumber", "")
                         addr = f"{housenumber} {street}".strip()
-                        maps_q = quote_plus(f"{name} {addr} {city} {state}")
                         leads.append(
                             Lead(
                                 lead_type="no_website",
@@ -285,7 +310,7 @@ class NoWebsiteFinder:
                                 category=category or "Local Trade",
                                 source="OpenStreetMap (US)",
                                 source_url=f"https://www.openstreetmap.org/node/{el.get('id')}",
-                                google_maps_url=f"https://www.google.com/maps/search/?api=1&query={maps_q}",
+                                google_maps_url=build_accurate_maps_url(name, addr, city, state),
                                 notes="Real business verified with public phone number but missing a registered website.",
                                 website_status="Confirmed No Website"
                             )
@@ -324,7 +349,6 @@ class NoWebsiteFinder:
                     continue
 
             seed_addr = item.get("address", f"{item['city']}, {item['state']}")
-            maps_q = quote_plus(f"{item['business_name']} {seed_addr}")
             leads.append(
                 Lead(
                     lead_type="no_website",
@@ -339,7 +363,7 @@ class NoWebsiteFinder:
                     category=item.get("category", "Small Business"),
                     source=item.get("source", "US Directory"),
                     source_url="N/A",
-                    google_maps_url=f"https://www.google.com/maps/search/?api=1&query={maps_q}",
+                    google_maps_url=build_accurate_maps_url(item["business_name"], item.get("address", ""), item["city"], item["state"]),
                     notes=item.get("notes", "No active website found."),
                     website_status=item.get("website_status", "No Website Found")
                 )

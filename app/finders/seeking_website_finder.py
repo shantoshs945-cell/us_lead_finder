@@ -7,7 +7,7 @@ from urllib.parse import quote_plus
 
 from app.models import Lead
 from app.config import load_settings, US_STATES
-from app.finders.verifier import normalize_us_phone, normalize_us_state
+from app.finders.verifier import normalize_us_phone, normalize_us_state, build_accurate_maps_url
 from app.data.us_seeds import VERIFIED_US_WEBSITE_SEEKERS
 
 logger = logging.getLogger(__name__)
@@ -366,6 +366,7 @@ class SeekingWebsiteFinder:
                     category=item.get("category", "Website Project"),
                     source=item.get("source", "Verified Post"),
                     source_url=item.get("source_url", "N/A"),
+                    google_maps_url=build_accurate_maps_url(item["business_name"], item.get("address", ""), item.get("city", ""), item.get("state", "")),
                     notes=item.get("notes", "Actively seeking website creation/redesign."),
                     website_status=item.get("website_status", "Actively Seeking Website")
                 )

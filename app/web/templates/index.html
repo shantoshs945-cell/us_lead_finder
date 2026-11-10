@@ -913,15 +913,39 @@
     }
 
     function getMapsUrl(l) {
-      if (l.google_maps_url && l.google_maps_url.startsWith('http')) {
+      if (l.google_maps_url && l.google_maps_url.startsWith('https://www.google.com/maps/place/')) {
         return l.google_maps_url;
       }
-      const parts = [l.business_name];
-      if (l.address && l.address.trim()) parts.push(l.address);
-      if (l.city && l.city.trim()) parts.push(l.city);
-      if (l.state && l.state.trim()) parts.push(l.state);
-      parts.push("USA");
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.join(' '))}`;
+      let name = (l.business_name || '')
+        .replace(/\(.*?\)/g, '')
+        .replace(/\[.*?\]/g, '')
+        .replace(/^Project:\s*/i, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const addr = (l.address || '').trim();
+      const city = (l.city || '').trim();
+      const state = (l.state || '').trim();
+
+      let fullQuery = '';
+      if (addr && /\d/.test(addr)) {
+        let addrClean = addr;
+        if (city && !addrClean.toLowerCase().includes(city.toLowerCase()) && city !== 'Remote / Nationwide' && city !== 'United States') {
+          addrClean += `, ${city}`;
+        }
+        if (state && !addrClean.toLowerCase().includes(state.toLowerCase()) && state !== 'US') {
+          addrClean += `, ${state}`;
+        }
+        fullQuery = `${name}, ${addrClean}`;
+      } else {
+        const loc = [];
+        if (city && city !== 'Remote / Nationwide' && city !== 'United States') loc.push(city);
+        if (state && state !== 'US') loc.push(state);
+        const locStr = loc.join(', ');
+        fullQuery = locStr ? `${name}, ${locStr}` : name;
+      }
+      fullQuery = fullQuery.replace(/,\s*,+/g, ',').replace(/^[\s,]+|[\s,]+$/g, '');
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullQuery)}`;
     }
 
     function openPitchModal(leadId) {

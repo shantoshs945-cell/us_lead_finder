@@ -39,6 +39,43 @@ def is_valid_us_state(state_code: str) -> bool:
     """Validates if state is one of the 50 US states or DC."""
     return state_code.upper() in US_STATES
 
+def build_accurate_maps_url(business_name: str, address: Optional[str] = "", city: Optional[str] = "", state: Optional[str] = "") -> str:
+    """
+    Constructs a clean, accurate Google Maps search/navigation URL.
+    Strips noise, deduplicates repeated city/state tokens, and handles street numbers cleanly.
+    """
+    from urllib.parse import quote_plus
+
+    # Clean business name
+    name = re.sub(r"\(.*?\)", "", business_name or "")
+    name = re.sub(r"\[.*?\]", "", name)
+    name = re.sub(r"^Project:\s*", "", name, flags=re.I)
+    name = re.sub(r"\s+", " ", name).strip()
+
+    addr = (address or "").strip()
+    c = (city or "").strip()
+    s = (state or "").strip()
+
+    # If street address is present and has digits (real physical building number)
+    if addr and re.search(r"\d", addr):
+        addr_clean = addr
+        if c and c.lower() not in addr_clean.lower() and c != "Remote / Nationwide" and c != "United States":
+            addr_clean += f", {c}"
+        if s and s.lower() not in addr_clean.lower() and s != "US":
+            addr_clean += f", {s}"
+        full_query = f"{name}, {addr_clean}"
+    else:
+        loc = []
+        if c and c != "Remote / Nationwide" and c != "United States":
+            loc.append(c)
+        if s and s != "US":
+            loc.append(s)
+        loc_str = ", ".join(loc)
+        full_query = f"{name}, {loc_str}" if loc_str else name
+
+    full_query = re.sub(r",\s*,+", ",", full_query).strip(" ,")
+    return f"https://www.google.com/maps/search/?api=1&query={quote_plus(full_query)}"
+
 def verify_no_website(business_name: str, city: str, state: str) -> Tuple[bool, str]:
     """
     Performs quick heuristic and DNS probe to verify absence of website.

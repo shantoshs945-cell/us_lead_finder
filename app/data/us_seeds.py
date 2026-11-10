@@ -354,7 +354,7 @@ VERIFIED_US_NO_WEBSITE_BUSINESSES: List[Dict[str, Any]] = [
 # Verified recent posts and postings from US people and small businesses looking for a website
 VERIFIED_US_WEBSITE_SEEKERS: List[Dict[str, Any]] = [
     {
-        "business_name": "Precision Pressure Washing Pros (Needs Website)",
+        "business_name": "Precision Pressure Washing Pros",
         "contact_name": "Dave Miller (u/dave_cleans_tx)",
         "phone": "(512) 763-9140",
         "email": "dave@pressurecleantx.com",
