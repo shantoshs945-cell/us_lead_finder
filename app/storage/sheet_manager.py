@@ -22,6 +22,7 @@ SHEET_COLUMNS = [
     "State",
     "Country",
     "Full Address",
+    "Google Maps Link",
     "Industry / Category",
     "Website Status",
     "Lead Source",
@@ -125,8 +126,8 @@ def export_to_excel(leads: Optional[List[Lead]] = None, filepath: Path = EXCEL_P
                 cell.font = Font(name="Calibri", size=10, bold=True)
                 cell.alignment = Alignment(horizontal="center", vertical="center")
 
-            # Link URLs
-            if col_name == "Source URL" and val and str(val).startswith("http"):
+            # Link URLs (Source URL & Google Maps Link)
+            if col_name in ("Source URL", "Google Maps Link") and val and str(val).startswith("http"):
                 cell.hyperlink = val
                 cell.font = Font(name="Calibri", size=10, color="2563EB", underline="single")
 

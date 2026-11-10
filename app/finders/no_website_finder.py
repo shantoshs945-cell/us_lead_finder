@@ -133,6 +133,7 @@ class NoWebsiteFinder:
                     if website and website.strip() not in ("", "None", "null"):
                         continue
 
+                    maps_query = quote_plus(f"{b_name} {full_addr} {item_city} {state}")
                     leads.append(
                         Lead(
                             lead_type="no_website",
@@ -147,6 +148,7 @@ class NoWebsiteFinder:
                             category=cat[:60] if cat else (category or "General Contractor"),
                             source=endpoint["name"],
                             source_url=endpoint["url"],
+                            google_maps_url=f"https://www.google.com/maps/search/?api=1&query={maps_query}",
                             notes="Verified active business license in city registry with no website on record.",
                             website_status="Confirmed No Website"
                         )
@@ -208,6 +210,7 @@ class NoWebsiteFinder:
                                 category=category or "Local Business",
                                 source="Google Places (US)",
                                 source_url=f"https://www.google.com/maps/place/?q=place_id:{place_id}",
+                                google_maps_url=f"https://www.google.com/maps/place/?q=place_id:{place_id}",
                                 notes=f"Google Rating: {d_res.get('rating', 'N/A')} ({d_res.get('user_ratings_total', 0)} reviews). No website attached.",
                                 website_status="No Website on Google Maps"
                             )
@@ -269,6 +272,7 @@ class NoWebsiteFinder:
                         street = tags.get("addr:street", "")
                         housenumber = tags.get("addr:housenumber", "")
                         addr = f"{housenumber} {street}".strip()
+                        maps_q = quote_plus(f"{name} {addr} {city} {state}")
                         leads.append(
                             Lead(
                                 lead_type="no_website",
@@ -281,6 +285,7 @@ class NoWebsiteFinder:
                                 category=category or "Local Trade",
                                 source="OpenStreetMap (US)",
                                 source_url=f"https://www.openstreetmap.org/node/{el.get('id')}",
+                                google_maps_url=f"https://www.google.com/maps/search/?api=1&query={maps_q}",
                                 notes="Real business verified with public phone number but missing a registered website.",
                                 website_status="Confirmed No Website"
                             )
@@ -318,6 +323,8 @@ class NoWebsiteFinder:
                 if cat_lower not in item_cat_lower and cat_lower not in item_name_lower:
                     continue
 
+            seed_addr = item.get("address", f"{item['city']}, {item['state']}")
+            maps_q = quote_plus(f"{item['business_name']} {seed_addr}")
             leads.append(
                 Lead(
                     lead_type="no_website",
@@ -328,10 +335,11 @@ class NoWebsiteFinder:
                     city=item["city"],
                     state=item["state"],
                     country="United States",
-                    address=item.get("address", f"{item['city']}, {item['state']}"),
+                    address=seed_addr,
                     category=item.get("category", "Small Business"),
                     source=item.get("source", "US Directory"),
                     source_url="N/A",
+                    google_maps_url=f"https://www.google.com/maps/search/?api=1&query={maps_q}",
                     notes=item.get("notes", "No active website found."),
                     website_status=item.get("website_status", "No Website Found")
                 )

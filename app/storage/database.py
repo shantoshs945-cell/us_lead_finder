@@ -27,6 +27,7 @@ def init_db() -> None:
                 category TEXT,
                 source TEXT NOT NULL,
                 source_url TEXT,
+                google_maps_url TEXT,
                 notes TEXT,
                 website_status TEXT,
                 status TEXT DEFAULT 'New',
@@ -34,6 +35,12 @@ def init_db() -> None:
                 dedup_key TEXT UNIQUE
             )
         """)
+        # Auto-migrate if column missing in existing db
+        cursor.execute("PRAGMA table_info(leads)")
+        col_names = [col[1] for col in cursor.fetchall()]
+        if "google_maps_url" not in col_names:
+            cursor.execute("ALTER TABLE leads ADD COLUMN google_maps_url TEXT DEFAULT ''")
+
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_leads_type ON leads(lead_type)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_leads_state ON leads(state)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)")
@@ -54,6 +61,7 @@ def make_dedup_key(lead: Lead) -> str:
 def insert_lead(lead: Lead) -> bool:
     """Insert a single lead, ignoring if duplicate exists. Returns True if inserted."""
     dedup_key = make_dedup_key(lead)
+    maps_url = lead.get_google_maps_url()
     with get_connection() as conn:
         cursor = conn.cursor()
         try:
@@ -61,13 +69,13 @@ def insert_lead(lead: Lead) -> bool:
                 INSERT INTO leads (
                     id, lead_type, business_name, contact_name, phone, email,
                     city, state, country, address, category, source, source_url,
-                    notes, website_status, status, created_at, dedup_key
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    google_maps_url, notes, website_status, status, created_at, dedup_key
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 lead.id, lead.lead_type, lead.business_name, lead.contact_name,
                 lead.phone, lead.email, lead.city, lead.state, lead.country,
                 lead.address, lead.category, lead.source, lead.source_url,
-                lead.notes, lead.website_status, lead.status, lead.created_at,
+                maps_url, lead.notes, lead.website_status, lead.status, lead.created_at,
                 dedup_key
             ))
             conn.commit()
@@ -139,6 +147,7 @@ def get_leads(
                 category=r["category"],
                 source=r["source"],
                 source_url=r["source_url"],
+                google_maps_url=r["google_maps_url"] if "google_maps_url" in r.keys() and r["google_maps_url"] else "",
                 notes=r["notes"],
                 website_status=r["website_status"],
                 status=r["status"],
@@ -168,6 +177,7 @@ def get_lead_by_id(lead_id: str) -> Optional[Lead]:
             category=r["category"],
             source=r["source"],
             source_url=r["source_url"],
+            google_maps_url=r["google_maps_url"] if "google_maps_url" in r.keys() and r["google_maps_url"] else "",
             notes=r["notes"],
             website_status=r["website_status"],
             status=r["status"],

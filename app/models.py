@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
 from datetime import datetime
+from urllib.parse import quote_plus
 import uuid
 
 LeadType = Literal["no_website", "seeking_website"]
@@ -20,10 +21,25 @@ class Lead(BaseModel):
     category: str = "General"
     source: str
     source_url: Optional[str] = ""
+    google_maps_url: Optional[str] = ""
     notes: Optional[str] = ""
     website_status: str = "No Website"
     status: LeadStatus = "New"
     created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    def get_google_maps_url(self) -> str:
+        """Returns explicitly set google_maps_url or auto-generates a valid Google Maps search URL."""
+        if self.google_maps_url and self.google_maps_url.strip():
+            return self.google_maps_url
+        parts = [self.business_name]
+        if self.address and self.address.strip():
+            parts.append(self.address)
+        if self.city and self.city.strip():
+            parts.append(self.city)
+        if self.state and self.state.strip():
+            parts.append(self.state)
+        query = " ".join(parts).strip()
+        return f"https://www.google.com/maps/search/?api=1&query={quote_plus(query)}"
 
     def to_sheet_row(self) -> dict:
         """Flattens lead for spreadsheet display and CSV/Excel export."""
@@ -38,6 +54,7 @@ class Lead(BaseModel):
             "State": self.state,
             "Country": self.country,
             "Full Address": self.address or f"{self.city}, {self.state}",
+            "Google Maps Link": self.get_google_maps_url(),
             "Industry / Category": self.category,
             "Website Status": self.website_status,
             "Lead Source": self.source,
