@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>US Lead Finder - Web Design & Development Clients</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- TOP HEADER -->
+  <header class="bg-brand-900 text-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 to-amber-200 text-brand-900 flex items-center justify-center font-black text-xl shadow">
+          <i class="fa-solid fa-crosshairs"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-xl font-bold tracking-tight">US Lead Finder</h1>
+            <span class="bg-red-500/90 text-white text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+              <span>🇺🇸</span> US Only
+            </span>
+          </div>
+          <p class="text-xs text-blue-200">Find Businesses with No Website & Clients Actively Looking for One</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button onclick="downloadFile('/api/export/csv')" class="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5 border border-white/20">
+          <i class="fa-solid fa-file-csv text-emerald-400"></i> Download CSV
+        </button>
+        <button onclick="downloadFile('/api/export/excel')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow">
+          <i class="fa-solid fa-file-excel"></i> Download Excel (.xlsx)
+        </button>
+        <button onclick="triggerGoogleSync()" class="bg-amber-500 hover:bg-amber-400 text-slate-900 text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow" title="Sync leads directly to your Google Sheet">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Sync Google Sheet
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+    
+    <!-- STATS ROW -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <div class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Total Stored Leads</div>
+          <div id="stat-total" class="text-2xl font-black text-slate-900 mt-1">0</div>
+          <div class="text-[11px] text-emerald-600 font-medium mt-0.5 flex items-center gap-1">
+            <i class="fa-solid fa-circle-check"></i> Stored in Sheet & Database
+          </div>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-users"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <div class="text-xs uppercase tracking-wider text-slate-500 font-semibold">No-Website Businesses</div>
+          <div id="stat-no-web" class="text-2xl font-black text-rose-600 mt-1">0</div>
+          <div class="text-[11px] text-slate-500 font-medium mt-0.5">High-Value Cold Targets</div>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-globe-slash"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <div class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Seeking Website</div>
+          <div id="stat-seeking" class="text-2xl font-black text-emerald-600 mt-1">0</div>
+          <div class="text-[11px] text-slate-500 font-medium mt-0.5">Ready-to-Buy Clients</div>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-comments-dollar"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <div class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Target Geography</div>
+          <div class="text-lg font-bold text-slate-900 mt-1">United States</div>
+          <div class="text-[11px] text-slate-500 font-medium mt-0.5">All 50 States Supported</div>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-map-location-dot"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS NAVIGATION -->
+    <div class="flex border-b border-slate-200 bg-white rounded-t-xl px-4 pt-3 space-x-1 sm:space-x-4">
+      <button onclick="switchTab('tab-sheet')" id="btn-tab-sheet" class="tab-btn pb-3 px-3 text-sm font-semibold border-b-2 border-brand-600 text-brand-600 flex items-center gap-2">
+        <i class="fa-solid fa-table-list"></i> Leads Sheet (<span id="sheet-count">0</span>)
+      </button>
+      <button onclick="switchTab('tab-no-website')" id="btn-tab-no-website" class="tab-btn pb-3 px-3 text-sm font-semibold border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-magnifying-glass-location text-rose-500"></i> Find Businesses (No Website)
+      </button>
+      <button onclick="switchTab('tab-seeking')" id="btn-tab-seeking" class="tab-btn pb-3 px-3 text-sm font-semibold border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-bullhorn text-emerald-500"></i> Find People Seeking Websites
+      </button>
+      <button onclick="switchTab('tab-settings')" id="btn-tab-settings" class="tab-btn pb-3 px-3 text-sm font-semibold border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-2">
+        <i class="fa-solid fa-gear text-slate-500"></i> Google Sheet & Setup
+      </button>
+    </div>
+
+    <!-- TAB 1: LEADS SHEET (SPREADSHEET TABLE) -->
+    <div id="tab-sheet" class="tab-content bg-white rounded-b-xl border border-t-0 border-slate-200 p-6 shadow-sm">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Leads Master Sheet</h2>
+          <p class="text-xs text-slate-500">All leads saved to local <code class="bg-slate-100 px-1 py-0.5 rounded text-brand-700">leads.csv</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-brand-700">leads.xlsx</code> and synced to your cloud sheet.</p>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <input type="text" id="filter-search" oninput="debounceLoadLeads()" placeholder="Search business, city, phone..." class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs w-full sm:w-48 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          
+          <select id="filter-type" onchange="loadLeads()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none">
+            <option value="">All Lead Types</option>
+            <option value="no_website">No Website</option>
+            <option value="seeking_website">Seeking Website</option>
+          </select>
+
+          <select id="filter-state" onchange="loadLeads()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none">
+            <option value="">All US States</option>
+          </select>
+
+          <select id="filter-status" onchange="loadLeads()" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none">
+            <option value="">All Statuses</option>
+            <option value="New">New</option>
+            <option value="Contacted">Contacted</option>
+            <option value="Follow Up">Follow Up</option>
+            <option value="Meeting Booked">Meeting Booked</option>
+            <option value="Won">Won</option>
+            <option value="Archived">Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- LEADS TABLE -->
+      <div class="table-responsive border border-slate-200 rounded-lg">
+        <table class="w-full text-left text-xs text-slate-600">
+          <thead class="bg-slate-50 text-slate-700 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+            <tr>
+              <th class="py-3 px-3">Type</th>
+              <th class="py-3 px-3">Business / Project</th>
+              <th class="py-3 px-3">Contact Person</th>
+              <th class="py-3 px-3">Phone Number</th>
+              <th class="py-3 px-3">Email</th>
+              <th class="py-3 px-3">Location</th>
+              <th class="py-3 px-3">Category</th>
+              <th class="py-3 px-3">Source</th>
+              <th class="py-3 px-3">Outreach Status</th>
+              <th class="py-3 px-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leads-table-body" class="divide-y divide-slate-100">
+            <!-- Dynamic rows injected here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 2: FIND BUSINESSES WITHOUT WEBSITE -->
+    <div id="tab-no-website" class="tab-content hidden bg-white rounded-b-xl border border-t-0 border-slate-200 p-6 shadow-sm">
+      <div class="max-w-3xl mb-6">
+        <h2 class="text-lg font-bold text-slate-900">Search US Businesses Without a Website</h2>
+        <p class="text-xs text-slate-500 mt-1">Queries city registries (NYC, Chicago, LA, Austin, Dallas, SF), OpenStreetMap, and business directories for establishments operating with real phone numbers and addresses but NO website presence.</p>
+      </div>
+
+      <!-- Search Form -->
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Select US State *</label>
+            <select id="nw-state" onchange="onStateSelectChange()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <!-- States injected dynamically -->
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">US City (or select preset)</label>
+            <input type="text" id="nw-city" placeholder="e.g. Austin, Dallas, Miami..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Business Category / Niche</label>
+            <select id="nw-category" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <option value="">All Trades & Services</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quick City Pills -->
+        <div class="mt-4 flex flex-wrap items-center gap-1.5 text-xs">
+          <span class="text-slate-500 font-semibold text-[11px]">Popular US Metros:</span>
+          <button onclick="setCityState('Austin', 'TX')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">Austin, TX</button>
+          <button onclick="setCityState('Dallas', 'TX')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">Dallas, TX</button>
+          <button onclick="setCityState('New York', 'NY')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">New York, NY</button>
+          <button onclick="setCityState('Chicago', 'IL')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">Chicago, IL</button>
+          <button onclick="setCityState('Los Angeles', 'CA')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">Los Angeles, CA</button>
+          <button onclick="setCityState('Miami', 'FL')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">Miami, FL</button>
+          <button onclick="setCityState('Phoenix', 'AZ')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">Phoenix, AZ</button>
+          <button onclick="setCityState('Atlanta', 'GA')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">Atlanta, GA</button>
+        </div>
+
+        <div class="mt-5 flex justify-end">
+          <button onclick="executeNoWebsiteSearch()" id="btn-search-no-web" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow transition flex items-center gap-2">
+            <i class="fa-solid fa-magnifying-glass"></i> Find Businesses Without Website
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Search Results -->
+      <div id="no-web-results-container" class="hidden">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-slate-800 text-sm">Discovered Businesses (Saved Automatically to Sheet)</h3>
+          <span id="no-web-results-count" class="text-xs bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-semibold">0 Found</span>
+        </div>
+        <div id="no-web-results-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <!-- Dynamically inserted lead cards -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: FIND PEOPLE SEEKING WEBSITES -->
+    <div id="tab-seeking" class="tab-content hidden bg-white rounded-b-xl border border-t-0 border-slate-200 p-6 shadow-sm">
+      <div class="max-w-3xl mb-6">
+        <h2 class="text-lg font-bold text-slate-900">Find People & Businesses Seeking a Website (US Only)</h2>
+        <p class="text-xs text-slate-500 mt-1">Scans live feeds across Jobicy US, Freelancer, RemoteOK, Hacker News, and small business communities for clients who posted "need a website", "looking for web designer", or "website for my business".</p>
+      </div>
+
+      <!-- Search Form -->
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Intent Keywords / Search Term</label>
+            <input type="text" id="sk-keywords" value="need a website" placeholder="e.g. need a website, looking for web designer, wordpress..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Max Leads to Retrieve</label>
+            <select id="sk-limit" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <option value="10">10 Leads</option>
+              <option value="20" selected>20 Leads</option>
+              <option value="35">35 Leads</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quick Keyword Filters -->
+        <div class="mt-4 flex flex-wrap items-center gap-1.5 text-xs">
+          <span class="text-slate-500 font-semibold text-[11px]">Quick Triggers:</span>
+          <button onclick="setKeywords('need a website')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">"need a website"</button>
+          <button onclick="setKeywords('looking for web designer')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">"looking for web designer"</button>
+          <button onclick="setKeywords('website for my business')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">"website for my business"</button>
+          <button onclick="setKeywords('redesign website')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">"redesign website"</button>
+          <button onclick="setKeywords('landing page')" class="px-2 py-0.5 bg-white border border-slate-200 rounded-md hover:bg-slate-100 text-slate-700">"landing page"</button>
+        </div>
+
+        <div class="mt-5 flex justify-end">
+          <button onclick="executeSeekingSearch()" id="btn-search-seeking" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow transition flex items-center gap-2">
+            <i class="fa-solid fa-satellite-dish"></i> Search In-Market US Clients
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Search Results -->
+      <div id="seeking-results-container" class="hidden">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-slate-800 text-sm">Active In-Market Requests (Saved Automatically to Sheet)</h3>
+          <span id="seeking-results-count" class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-semibold">0 Found</span>
+        </div>
+        <div id="seeking-results-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <!-- Dynamically inserted lead cards -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: SETTINGS & GOOGLE SHEETS SETUP -->
+    <div id="tab-settings" class="tab-content hidden bg-white rounded-b-xl border border-t-0 border-slate-200 p-6 shadow-sm">
+      <div class="max-w-4xl">
+        <h2 class="text-lg font-bold text-slate-900 mb-1">Google Sheets & API Integration</h2>
+        <p class="text-xs text-slate-500 mb-6">Connect your live Google Sheet so leads sync into your cloud spreadsheet in real-time.</p>
+
+        <!-- Google Sheets Sync Guide -->
+        <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-5 mb-6">
+          <div class="flex items-start space-x-3">
+            <div class="text-brand-600 text-xl mt-0.5">
+              <i class="fa-solid fa-file-lines"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="font-bold text-brand-900 text-sm">30-Second Google Sheets Setup</h3>
+              <ol class="text-xs text-slate-700 list-decimal list-inside space-y-1 mt-2">
+                <li>Create a blank spreadsheet at <a href="https://sheets.new" target="_blank" class="text-brand-600 font-semibold underline">sheets.new</a></li>
+                <li>Click <span class="font-semibold text-slate-900">Extensions &gt; Apps Script</span> in your Google Sheet menu.</li>
+                <li>Delete any code in the editor, paste the script below, and click <span class="font-semibold text-slate-900">Save</span>.</li>
+                <li>Click <span class="font-semibold text-slate-900">Deploy &gt; New deployment &gt; Select 'Web app'</span>.</li>
+                <li>Set <strong>'Execute as: Me'</strong> and <strong>'Who has access: Anyone'</strong>, then click <strong>Deploy</strong>.</li>
+                <li>Copy the provided <strong>Web App URL</strong> and paste it below!</li>
+              </ol>
+
+              <!-- Code Box -->
+              <div class="mt-3 relative">
+                <pre id="apps-script-code" class="bg-slate-900 text-slate-200 text-[11px] p-3 rounded-lg overflow-x-auto font-mono max-h-40">// Loading script template...</pre>
+                <button onclick="copyAppsScript()" class="absolute top-2 right-2 bg-brand-600 hover:bg-brand-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow">
+                  <i class="fa-regular fa-copy"></i> Copy Script
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings Form -->
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Google Sheets Webhook URL</label>
+            <div class="flex gap-2">
+              <input type="text" id="setting-webhook-url" placeholder="https://script.google.com/macros/s/.../exec" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <button onclick="triggerGoogleSync()" class="bg-amber-500 hover:bg-amber-400 text-slate-900 text-xs font-bold px-4 py-2 rounded-lg transition whitespace-nowrap">
+                Test Sync
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">Whenever a lead is found or status changed, it appends automatically into this Google Sheet.</p>
+          </div>
+
+          <div class="border-t border-slate-200 pt-4">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Google Places API Key (Optional)</label>
+            <input type="password" id="setting-google-key" placeholder="AIzaSy..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            <p class="text-[11px] text-slate-500 mt-1">Optional. Adds live unlimited Google Maps Places searching across any US zip code.</p>
+          </div>
+
+          <div class="border-t border-slate-200 pt-4">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Reddit API Client ID & Secret (Optional)</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input type="text" id="setting-reddit-id" placeholder="Client ID" class="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <input type="password" id="setting-reddit-secret" placeholder="Client Secret" class="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">Optional. Enables live authenticated searches on r/smallbusiness and r/forhire.</p>
+          </div>
+
+          <div class="pt-4 flex justify-end">
+            <button onclick="saveAllSettings()" class="bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow transition">
+              Save Settings
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- OUTREACH PITCH MODAL -->
+  <div id="pitch-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200">
+      <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+        <div>
+          <span id="modal-lead-type-badge" class="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-rose-500 text-white">No Website</span>
+          <h3 id="modal-biz-name" class="font-bold text-base mt-1 text-slate-100">Business Name</h3>
+        </div>
+        <button onclick="closePitchModal()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6">
+        <!-- Pitch Sub-tabs -->
+        <div class="flex border-b border-slate-200 space-x-4 mb-4 text-xs font-semibold">
+          <button onclick="switchPitchSubTab('subtab-email')" id="btn-subtab-email" class="pb-2 text-brand-600 border-b-2 border-brand-600">
+            <i class="fa-solid fa-envelope"></i> Cold Email Pitch
+          </button>
+          <button onclick="switchPitchSubTab('subtab-sms')" id="btn-subtab-sms" class="pb-2 text-slate-500 border-b-2 border-transparent hover:text-slate-800">
+            <i class="fa-solid fa-comment-sms"></i> Cold SMS / Text
+          </button>
+          <button onclick="switchPitchSubTab('subtab-phone')" id="btn-subtab-phone" class="pb-2 text-slate-500 border-b-2 border-transparent hover:text-slate-800">
+            <i class="fa-solid fa-phone"></i> Cold Call Opener
+          </button>
+        </div>
+
+        <!-- Subtab Email -->
+        <div id="subtab-email" class="space-y-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Subject Line</label>
+            <div class="flex gap-2">
+              <input type="text" id="modal-email-subject" readonly class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800 font-medium">
+              <button onclick="copyField('modal-email-subject')" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                Copy
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Email Body</label>
+            <div class="relative">
+              <textarea id="modal-email-body" rows="7" readonly class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-800 font-sans"></textarea>
+              <button onclick="copyField('modal-email-body')" class="absolute top-2 right-2 bg-brand-600 hover:bg-brand-500 text-white px-2.5 py-1 rounded text-[10px] font-bold shadow">
+                Copy Email
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtab SMS -->
+        <div id="subtab-sms" class="hidden space-y-3">
+          <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Text Message (SMS)</label>
+          <div class="relative">
+            <textarea id="modal-sms-body" rows="4" readonly class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-800"></textarea>
+            <button onclick="copyField('modal-sms-body')" class="absolute top-2 right-2 bg-brand-600 hover:bg-brand-500 text-white px-2.5 py-1 rounded text-[10px] font-bold shadow">
+              Copy SMS
+            </button>
+          </div>
+        </div>
+
+        <!-- Subtab Phone -->
+        <div id="subtab-phone" class="hidden space-y-3">
+          <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cold Phone Script</label>
+          <div class="relative">
+            <textarea id="modal-phone-script" rows="6" readonly class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-800 font-mono"></textarea>
+            <button onclick="copyField('modal-phone-script')" class="absolute top-2 right-2 bg-brand-600 hover:bg-brand-500 text-white px-2.5 py-1 rounded text-[10px] font-bold shadow">
+              Copy Script
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+    <i class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-message">Notification</span>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let metaData = {};
+    let currentLeads = [];
+    let searchTimeout = null;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      await fetchMetadata();
+      await fetchStats();
+      await loadLeads();
+      await loadSettingsForm();
+    });
+
+    async function fetchMetadata() {
+      try {
+        const res = await fetch("/api/meta");
+        metaData = await res.json();
+        
+        // Populate States Dropdowns
+        const nwState = document.getElementById("nw-state");
+        const filterState = document.getElementById("filter-state");
+        
+        nwState.innerHTML = '<option value="">Select a US State</option>';
+        for (const [code, name] of Object.entries(metaData.states)) {
+          const opt = `<option value="${code}">${name} (${code})</option>`;
+          nwState.innerHTML += opt;
+          filterState.innerHTML += opt;
+        }
+
+        // Set default to Texas
+        nwState.value = "TX";
+
+        // Populate Categories Dropdown
+        const nwCat = document.getElementById("nw-category");
+        nwCat.innerHTML = '<option value="">All Trades & Services</option>';
+        metaData.popular_categories.forEach(c => {
+          nwCat.innerHTML += `<option value="${c}">${c}</option>`;
+        });
+
+        // Set Google Apps Script template
+        document.getElementById("apps-script-code").innerText = metaData.google_apps_script_template.trim();
+      } catch (err) {
+        console.error("Meta error:", err);
+      }
+    }
+
+    async function fetchStats() {
+      try {
+        const res = await fetch("/api/stats");
+        const data = await res.json();
+        document.getElementById("stat-total").innerText = data.total_leads;
+        document.getElementById("stat-no-web").innerText = data.no_website_leads;
+        document.getElementById("stat-seeking").innerText = data.seeking_website_leads;
+        document.getElementById("sheet-count").innerText = data.total_leads;
+      } catch (err) {
+        console.error("Stats error:", err);
+      }
+    }
+
+    async function loadLeads() {
+      const type = document.getElementById("filter-type").value;
+      const state = document.getElementById("filter-state").value;
+      const status = document.getElementById("filter-status").value;
+      const search = document.getElementById("filter-search").value;
+
+      let url = `/api/leads?limit=500`;
+      if (type) url += `&lead_type=${encodeURIComponent(type)}`;
+      if (state) url += `&state=${encodeURIComponent(state)}`;
+      if (status) url += `&status=${encodeURIComponent(status)}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        currentLeads = data.leads;
+        renderLeadsTable(currentLeads);
+      } catch (err) {
+        console.error("Error loading leads:", err);
+      }
+    }
+
+    function debounceLoadLeads() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(loadLeads, 300);
+    }
+
+    function renderLeadsTable(leads) {
+      const tbody = document.getElementById("leads-table-body");
+      if (!leads || leads.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-slate-400">No leads found matching your filters. Use the search tabs above to discover new leads!</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = leads.map(l => {
+        const isNoWeb = l.lead_type === 'no_website';
+        const typeBadge = isNoWeb
+          ? `<span class="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded text-[10px]">No Website</span>`
+          : `<span class="bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded text-[10px]">Seeking Site</span>`;
+
+        const phoneLink = l.phone && l.phone !== 'N/A' 
+          ? `<a href="tel:${l.phone}" class="font-semibold text-slate-800 hover:text-brand-600">${l.phone}</a>` 
+          : `<span class="text-slate-400">N/A</span>`;
+
+        const emailLink = l.email && l.email !== 'N/A'
+          ? `<a href="mailto:${l.email}" class="text-brand-600 hover:underline">${l.email}</a>`
+          : `<span class="text-slate-400">N/A</span>`;
+
+        const sourceLink = l.source_url && l.source_url.startsWith('http')
+          ? `<a href="${l.source_url}" target="_blank" class="text-brand-600 hover:underline flex items-center gap-1">${l.source} <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>`
+          : l.source;
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-3">${typeBadge}</td>
+            <td class="py-3 px-3">
+              <div class="font-bold text-slate-900">${escapeHtml(l.business_name)}</div>
+              <div class="text-[10px] text-slate-500">${escapeHtml(l.address || (l.city + ', ' + l.state))}</div>
+            </td>
+            <td class="py-3 px-3 font-medium">${escapeHtml(l.contact_name || 'Owner')}</td>
+            <td class="py-3 px-3 whitespace-nowrap">${phoneLink}</td>
+            <td class="py-3 px-3">${emailLink}</td>
+            <td class="py-3 px-3 whitespace-nowrap">
+              <span class="font-semibold">${escapeHtml(l.city)}</span>, <span class="bg-slate-100 px-1 py-0.5 rounded font-bold">${l.state}</span>
+            </td>
+            <td class="py-3 px-3">${escapeHtml(l.category)}</td>
+            <td class="py-3 px-3">${sourceLink}</td>
+            <td class="py-3 px-3 whitespace-nowrap">
+              <select onchange="updateLeadStatus('${l.id}', this.value)" class="text-[11px] font-semibold rounded px-2 py-1 border border-slate-200 bg-white ${getStatusColorClass(l.status)}">
+                <option value="New" ${l.status==='New'?'selected':''}>New</option>
+                <option value="Contacted" ${l.status==='Contacted'?'selected':''}>Contacted</option>
+                <option value="Follow Up" ${l.status==='Follow Up'?'selected':''}>Follow Up</option>
+                <option value="Meeting Booked" ${l.status==='Meeting Booked'?'selected':''}>Meeting Booked</option>
+                <option value="Won" ${l.status==='Won'?'selected':''}>Won</option>
+                <option value="Archived" ${l.status==='Archived'?'selected':''}>Archived</option>
+              </select>
+            </td>
+            <td class="py-3 px-3 text-right whitespace-nowrap">
+              <button onclick="openPitchModal('${l.id}')" class="bg-brand-50 hover:bg-brand-100 text-brand-700 font-semibold px-2 py-1 rounded text-[11px] mr-1" title="View tailored outreach pitch">
+                <i class="fa-solid fa-paper-plane"></i> Pitch
+              </button>
+              <button onclick="deleteLead('${l.id}')" class="text-slate-400 hover:text-rose-600 p-1" title="Delete lead">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getStatusColorClass(status) {
+      switch(status) {
+        case 'New': return 'text-blue-700';
+        case 'Contacted': return 'text-amber-700';
+        case 'Follow Up': return 'text-orange-700';
+        case 'Meeting Booked': return 'text-emerald-700 font-bold';
+        case 'Won': return 'text-emerald-900 bg-emerald-50 font-black';
+        default: return 'text-slate-600';
+      }
+    }
+
+    async function executeNoWebsiteSearch() {
+      const btn = document.getElementById("btn-search-no-web");
+      const state = document.getElementById("nw-state").value;
+      const city = document.getElementById("nw-city").value.trim();
+      const category = document.getElementById("nw-category").value;
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Searching US Registries...`;
+
+      try {
+        const res = await fetch("/api/leads/search-no-website", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ state, city, category, limit: 15 })
+        });
+        const data = await res.json();
+        showToast(`Discovered ${data.found_leads} businesses with NO website!`);
+        
+        // Show results grid
+        renderSearchResultsGrid("no-web-results-grid", data.leads);
+        document.getElementById("no-web-results-count").innerText = `${data.found_leads} Found`;
+        document.getElementById("no-web-results-container").classList.remove("hidden");
+
+        await fetchStats();
+        await loadLeads();
+      } catch (err) {
+        showToast("Error searching businesses", true);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-magnifying-glass"></i> Find Businesses Without Website`;
+      }
+    }
+
+    async function executeSeekingSearch() {
+      const btn = document.getElementById("btn-search-seeking");
+      const keywords = document.getElementById("sk-keywords").value.trim();
+      const limit = parseInt(document.getElementById("sk-limit").value) || 20;
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Scanning Live US Feeds...`;
+
+      try {
+        const res = await fetch("/api/leads/search-seeking-website", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ keywords, limit })
+        });
+        const data = await res.json();
+        showToast(`Found ${data.found_leads} in-market website requests!`);
+        
+        renderSearchResultsGrid("seeking-results-grid", data.leads);
+        document.getElementById("seeking-results-count").innerText = `${data.found_leads} Found`;
+        document.getElementById("seeking-results-container").classList.remove("hidden");
+
+        await fetchStats();
+        await loadLeads();
+      } catch (err) {
+        showToast("Error searching in-market leads", true);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-satellite-dish"></i> Search In-Market US Clients`;
+      }
+    }
+
+    function renderSearchResultsGrid(containerId, leads) {
+      const grid = document.getElementById(containerId);
+      if (!leads || leads.length === 0) {
+        grid.innerHTML = `<div class="col-span-full p-6 text-center text-slate-400">No matching leads found. Try a different city or broaden your search keywords.</div>`;
+        return;
+      }
+
+      grid.innerHTML = leads.map(l => {
+        const isNoWeb = l.lead_type === 'no_website';
+        return `
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+            <div>
+              <div class="flex justify-between items-start gap-2">
+                <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded ${isNoWeb ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}">
+                  ${isNoWeb ? 'No Website' : 'Seeking Website'}
+                </span>
+                <span class="text-[11px] font-bold text-slate-500">${l.city}, ${l.state}</span>
+              </div>
+              <h4 class="font-bold text-slate-900 text-sm mt-2">${escapeHtml(l.business_name)}</h4>
+              <p class="text-[11px] text-slate-600 mt-1 line-clamp-2">${escapeHtml(l.notes || l.address)}</p>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <div>
+                ${l.phone && l.phone !== 'N/A' ? `<span class="font-bold text-slate-800"><i class="fa-solid fa-phone text-slate-400 text-[10px]"></i> ${l.phone}</span>` : `<span class="text-slate-400 font-semibold">${l.contact_name || 'Online Client'}</span>`}
+              </div>
+              <button onclick="openPitchModal('${l.id}')" class="bg-brand-600 hover:bg-brand-500 text-white text-[11px] font-semibold px-2.5 py-1 rounded shadow">
+                Outreach Pitch
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function updateLeadStatus(leadId, newStatus) {
+      try {
+        await fetch(`/api/leads/${leadId}/status`, {
+          method: "PUT",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ status: newStatus })
+        });
+        showToast(`Lead status updated to ${newStatus}`);
+        await fetchStats();
+      } catch (err) {
+        showToast("Error updating status", true);
+      }
+    }
+
+    async function deleteLead(leadId) {
+      if (!confirm("Are you sure you want to remove this lead?")) return;
+      try {
+        await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
+        showToast("Lead removed");
+        await fetchStats();
+        await loadLeads();
+      } catch (err) {
+        showToast("Error deleting lead", true);
+      }
+    }
+
+    async function openPitchModal(leadId) {
+      try {
+        const res = await fetch(`/api/leads/${leadId}/outreach`);
+        const data = await res.json();
+        const lead = data.lead;
+        const pitch = data.pitch;
+
+        document.getElementById("modal-biz-name").innerText = lead.business_name;
+        document.getElementById("modal-lead-type-badge").innerText = lead.lead_type === 'no_website' ? 'No Website' : 'Seeking Website';
+        document.getElementById("modal-lead-type-badge").className = `text-[10px] uppercase font-black px-2 py-0.5 rounded ${lead.lead_type === 'no_website' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`;
+
+        document.getElementById("modal-email-subject").value = pitch.email_subject;
+        document.getElementById("modal-email-body").value = pitch.email_body;
+        document.getElementById("modal-sms-body").value = pitch.sms_body;
+        document.getElementById("modal-phone-script").value = pitch.phone_script;
+
+        switchPitchSubTab('subtab-email');
+        document.getElementById("pitch-modal").classList.remove("hidden");
+      } catch (err) {
+        showToast("Error generating pitch", true);
+      }
+    }
+
+    function closePitchModal() {
+      document.getElementById("pitch-modal").classList.add("hidden");
+    }
+
+    function switchPitchSubTab(tabId) {
+      ['subtab-email', 'subtab-sms', 'subtab-phone'].forEach(t => {
+        document.getElementById(t).classList.add("hidden");
+        document.getElementById(`btn-${t}`).className = "pb-2 text-slate-500 border-b-2 border-transparent hover:text-slate-800";
+      });
+      document.getElementById(tabId).classList.remove("hidden");
+      document.getElementById(`btn-${tabId}`).className = "pb-2 text-brand-600 border-b-2 border-brand-600 font-bold";
+    }
+
+    function copyField(elementId) {
+      const el = document.getElementById(elementId);
+      el.select();
+      navigator.clipboard.writeText(el.value);
+      showToast("Copied to clipboard!");
+    }
+
+    function copyAppsScript() {
+      const code = document.getElementById("apps-script-code").innerText;
+      navigator.clipboard.writeText(code);
+      showToast("Google Apps Script copied!");
+    }
+
+    async function loadSettingsForm() {
+      try {
+        const res = await fetch("/api/settings");
+        const s = await res.json();
+        document.getElementById("setting-webhook-url").value = s.google_sheets_webhook_url || "";
+        document.getElementById("setting-google-key").value = s.google_places_api_key || "";
+        document.getElementById("setting-reddit-id").value = s.reddit_client_id || "";
+        document.getElementById("setting-reddit-secret").value = s.reddit_client_secret || "";
+      } catch (err) {
+        console.error("Settings load error:", err);
+      }
+    }
+
+    async function saveAllSettings() {
+      const newSettings = {
+        google_sheets_webhook_url: document.getElementById("setting-webhook-url").value.trim(),
+        google_places_api_key: document.getElementById("setting-google-key").value.trim(),
+        reddit_client_id: document.getElementById("setting-reddit-id").value.trim(),
+        reddit_client_secret: document.getElementById("setting-reddit-secret").value.trim()
+      };
+
+      try {
+        await fetch("/api/settings", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(newSettings)
+        });
+        showToast("Settings saved successfully!");
+      } catch (err) {
+        showToast("Error saving settings", true);
+      }
+    }
+
+    async function triggerGoogleSync() {
+      showToast("Syncing leads with Google Sheet...");
+      try {
+        const res = await fetch("/api/sync/google-sheet", { method: "POST" });
+        const data = await res.json();
+        if (data.success) {
+          showToast("Successfully synced to Google Sheet!");
+        } else {
+          showToast(data.message || "Please configure your Google Sheets Webhook in settings.", true);
+        }
+      } catch (err) {
+        showToast("Sync error. Check webhook URL in settings.", true);
+      }
+    }
+
+    function downloadFile(url) {
+      window.location.href = url;
+      showToast("Starting download...");
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
+      document.querySelectorAll(".tab-btn").forEach(el => {
+        el.className = "tab-btn pb-3 px-3 text-sm font-semibold border-b-2 border-transparent text-slate-600 hover:text-slate-900 flex items-center gap-2";
+      });
+
+      document.getElementById(tabId).classList.remove("hidden");
+      document.getElementById(`btn-${tabId}`).className = "tab-btn pb-3 px-3 text-sm font-semibold border-b-2 border-brand-600 text-brand-600 flex items-center gap-2";
+    }
+
+    function setCityState(city, state) {
+      document.getElementById("nw-city").value = city;
+      document.getElementById("nw-state").value = state;
+    }
+
+    function setKeywords(kw) {
+      document.getElementById("sk-keywords").value = kw;
+    }
+
+    function onStateSelectChange() {
+      // Optional state change hook
+    }
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById("toast");
+      const msgEl = document.getElementById("toast-message");
+      msgEl.innerText = msg;
+      toast.className = `fixed bottom-5 right-5 text-white px-4 py-2.5 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 transition-all duration-300 z-50 transform translate-y-0 opacity-100 ${isError ? 'bg-rose-600' : 'bg-slate-900'}`;
+      setTimeout(() => {
+        toast.className = "fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 z-50";
+      }, 3500);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
+
